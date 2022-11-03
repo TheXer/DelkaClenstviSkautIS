@@ -1,0 +1,1 @@
+Program pro výpočet délky členství, protože for some reason SkautIS toto nemá, smh
