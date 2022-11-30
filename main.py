@@ -1,11 +1,12 @@
 from datetime import datetime
 import csv
+from typing import Any
 
 
-def convert_from_txt_to_csv(txt):
+def convert_from_txt_to_csv(path_to_txt: str) -> None:
     """Funkce pro příjem txt file ze skautISu a vypláznutí csv file z toho"""
 
-    with open(txt, "r") as data:
+    with open(path_to_txt, "r") as data:
         lst = []
         for line in data:
             x = line.replace("\n", "")
@@ -23,16 +24,17 @@ def convert_from_txt_to_csv(txt):
             try:
                 x.pop(7)
             except IndexError:
-                pass
+                continue
             finally:
                 writer.writerow(x)
 
 
-def roky_dnesni_clenove(csv_file):
+def roky_dnesni_clenove(path_to_csv_file: str) -> dict[str, list[tuple[str, str]]]:
     """Získat dnešní členy"""
 
     clen_roky_vsichni = {}
-    with open(csv_file) as cfile:
+
+    with open(path_to_csv_file) as cfile:
         csvreader = csv.reader(cfile, delimiter=" ")
 
         # iterování všech záznamů v csv a seřazení těch záznamů
@@ -48,14 +50,15 @@ def roky_dnesni_clenove(csv_file):
             for date in y
             if datetime.now().strftime("%d.%m.%Y") in date
         }
+
     return aktualni_clenove
 
 
-def roky_vsichni_clenove(csv_file):
+def roky_vsichni_clenove(path_to_csv_file: str) -> dict[str, list[tuple[str, str]]]:
     """Získat všechny členy"""
 
     clen_roky_vsichni = {}
-    with open(csv_file) as cfile:
+    with open(path_to_csv_file) as cfile:
         csvreader = csv.reader(cfile, delimiter=" ")
 
         # iterování všech záznamů v csv a seřazení těch záznamů
@@ -68,11 +71,11 @@ def roky_vsichni_clenove(csv_file):
     return clen_roky_vsichni
 
 
-def pocet_dni_clenove(dct):
+def pocet_dni_clenove(clenove: dict) -> dict[Any, float]:
     """Funkce pro výpočet členství zaokrouhlené na roky"""
 
     pocet_dni = {}
-    for x, y in dct.items():
+    for x, y in clenove.items():
         for date in y:
             d1 = datetime.strptime(date[0], "%d.%m.%Y")
             d2 = datetime.strptime(date[1], "%d.%m.%Y")
@@ -86,10 +89,3 @@ def pocet_dni_clenove(dct):
                 pocet_dni[x] += years
 
     return pocet_dni
-
-if __name__ == "__main__":
-    convert_from_txt_to_csv("delka_clenstvi.txt")
-    rslt = roky_vsichni_clenove("log.csv")
-
-    for x, y in pocet_dni_clenove(rslt).items():
-        print(x, y)
