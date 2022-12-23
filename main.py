@@ -2,90 +2,85 @@ from datetime import datetime
 import csv
 from typing import Any
 
+COLUMN_UNNEEDED = 7
+TODAY_DATE_COLUMN = 4
+DATE_OF_REGISTRATION = 3
+NAME_SURNAME_NICKNAME = 0
+
 
 def convert_from_txt_to_csv(path_to_txt: str) -> None:
     """Funkce pro příjem txt file ze skautISu a vypláznutí csv file z toho"""
 
     with open(path_to_txt, "r") as data:
-        lst = []
+        clean_list_of_members = []
         for line in data:
             x = line.replace("\n", "")
             list_of_lines = x.split("\t")
-            list_of_lines[4] = list_of_lines[4].replace(" ", "")
+            list_of_lines[TODAY_DATE_COLUMN] = list_of_lines[TODAY_DATE_COLUMN].replace(" ", "")
 
-            if list_of_lines[4] == "":
-                list_of_lines[4] = str(datetime.now().strftime("%d.%m.%Y"))
+            if list_of_lines[TODAY_DATE_COLUMN] == "":
+                list_of_lines[TODAY_DATE_COLUMN] = str(datetime.now().strftime("%d.%m.%Y"))
 
-            lst.append(list_of_lines)
+            clean_list_of_members.append(list_of_lines)
 
     with open("log.csv", "w") as out_file:
         writer = csv.writer(out_file, delimiter=" ")
-        for x in lst:
-            try:
-                x.pop(7)
-            except IndexError:
-                continue
-            finally:
-                writer.writerow(x)
+        for member in clean_list_of_members:
+            writer.writerow(member[:COLUMN_UNNEEDED])
 
 
-def roky_dnesni_clenove(path_to_csv_file: str) -> dict[str, list[tuple[str, str]]]:
-    """Získat dnešní členy"""
+def years_actual_members(path_to_csv_file: str) -> dict[str, list[tuple[str, str]]]:
+    """Get only new members"""
 
-    clen_roky_vsichni = {}
+    all_members = {}
 
     with open(path_to_csv_file) as cfile:
         csvreader = csv.reader(cfile, delimiter=" ")
 
         # iterování všech záznamů v csv a seřazení těch záznamů
         for x in csvreader:
-            if x[0] not in clen_roky_vsichni.keys():
-                clen_roky_vsichni[x[0]] = [(x[3], x[4])]
-            else:
-                clen_roky_vsichni[x[0]].append((x[3], x[4]))
+            all_members.setdefault(x[NAME_SURNAME_NICKNAME], []).append((x[DATE_OF_REGISTRATION], x[TODAY_DATE_COLUMN]))
 
-        aktualni_clenove = {
+        actual_members = {
             x: y
-            for x, y in clen_roky_vsichni.items()
+            for x, y in all_members.items()
             for date in y
             if datetime.now().strftime("%d.%m.%Y") in date
         }
 
-    return aktualni_clenove
+    return actual_members
 
 
-def roky_vsichni_clenove(path_to_csv_file: str) -> dict[str, list[tuple[str, str]]]:
-    """Získat všechny členy"""
+def years_all_members(path_to_csv_file: str) -> dict[str, list[tuple[str, str]]]:
+    """Get all members"""
 
-    clen_roky_vsichni = {}
+    all_members = {}
     with open(path_to_csv_file) as cfile:
         csvreader = csv.reader(cfile, delimiter=" ")
 
-        # iterování všech záznamů v csv a seřazení těch záznamů
         for x in csvreader:
-            if x[0] not in clen_roky_vsichni.keys():
-                clen_roky_vsichni[x[0]] = [(x[3], x[4])]
-            else:
-                clen_roky_vsichni[x[0]].append((x[3], x[4]))
+            all_members.setdefault(x[NAME_SURNAME_NICKNAME], []).append((x[DATE_OF_REGISTRATION], x[TODAY_DATE_COLUMN]))
 
-    return clen_roky_vsichni
+    return all_members
 
 
-def pocet_dni_clenove(clenove: dict) -> dict[Any, float]:
+def count_days(members: dict) -> dict[Any, float]:
     """Funkce pro výpočet členství zaokrouhlené na roky"""
 
-    pocet_dni = {}
-    for x, y in clenove.items():
-        for date in y:
+    days = {}
+    for name, dates in members.items():
+        for date in dates:
             d1 = datetime.strptime(date[0], "%d.%m.%Y")
             d2 = datetime.strptime(date[1], "%d.%m.%Y")
 
             diff = d2 - d1
             years = round(diff.days / 365.25, 1)
 
-            if x not in pocet_dni.keys():
-                pocet_dni[x] = years
+            if name not in days.keys():
+                days[name] = years
             else:
-                pocet_dni[x] += years
+                days[name] += years
 
-    return pocet_dni
+    return days
+
+
