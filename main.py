@@ -1,3 +1,4 @@
+import dataclasses
 from datetime import datetime
 import csv
 from typing import Any
@@ -5,12 +6,19 @@ from typing import Any
 COLUMN_UNNEEDED = 7
 TODAY_DATE_COLUMN = 4
 DATE_OF_REGISTRATION = 3
-NAME_SURNAME_NICKNAME = 0
+
+@dataclasses.dataclass()
+class Person:
+    name: str
+    ID: str
+    date_of_birth: str
+    registration_date: str
+    registration_expiry: str
+    membership_type: str
+    group_type: str
 
 
-def convert_from_txt_to_csv(path_to_txt: str) -> None:
-    """Funkce pro příjem txt file ze skautISu a vypláznutí csv file z toho"""
-
+def txt_to_person(path_to_txt: str) -> list[Person]:
     with open(path_to_txt, "r") as data:
         clean_list_of_members = []
         for line in data:
@@ -21,45 +29,51 @@ def convert_from_txt_to_csv(path_to_txt: str) -> None:
             if list_of_lines[TODAY_DATE_COLUMN] == "":
                 list_of_lines[TODAY_DATE_COLUMN] = str(datetime.now().strftime("%d.%m.%Y"))
 
-            clean_list_of_members.append(list_of_lines)
+            person = Person(*list_of_lines[:COLUMN_UNNEEDED])
+            clean_list_of_members.append(person)
 
+    return clean_list_of_members
+
+
+def make_csv_file(person_list: list[Person]) -> None:
     with open("log.csv", "w") as out_file:
         writer = csv.writer(out_file, delimiter=" ")
-        for member in clean_list_of_members:
-            writer.writerow(member[:COLUMN_UNNEEDED])
+
+        for member in person_list:
+            writer.writerow([
+                member.name,
+                member.ID,
+                member.date_of_birth,
+                member.registration_date,
+                member.registration_expiry,
+                member.membership_type,
+                member.group_type])
 
 
-def years_actual_members(path_to_csv_file: str) -> dict[str, list[tuple[str, str]]]:
+def years_actual_members(member_list: list[Person]) -> dict[str, list[tuple[str, str]]]:
     """Get only new members"""
 
     all_members = {}
 
-    with open(path_to_csv_file) as cfile:
-        csvreader = csv.reader(cfile, delimiter=" ")
+    for person in member_list:
+        all_members.setdefault(person.name, []).append((person.registration_date, person.registration_expiry))
 
-        # iterování všech záznamů v csv a seřazení těch záznamů
-        for x in csvreader:
-            all_members.setdefault(x[NAME_SURNAME_NICKNAME], []).append((x[DATE_OF_REGISTRATION], x[TODAY_DATE_COLUMN]))
-
-        actual_members = {
-            x: y
-            for x, y in all_members.items()
-            for date in y
-            if datetime.now().strftime("%d.%m.%Y") in date
-        }
+    actual_members = {
+        x: y
+        for x, y in all_members.items()
+        for date in y
+        if datetime.now().strftime("%d.%m.%Y") in date
+    }
 
     return actual_members
 
 
-def years_all_members(path_to_csv_file: str) -> dict[str, list[tuple[str, str]]]:
+def years_all_members(member_list: list[Person]) -> dict[Person, list[tuple[str, str]]]:
     """Get all members"""
 
     all_members = {}
-    with open(path_to_csv_file) as cfile:
-        csvreader = csv.reader(cfile, delimiter=" ")
-
-        for x in csvreader:
-            all_members.setdefault(x[NAME_SURNAME_NICKNAME], []).append((x[DATE_OF_REGISTRATION], x[TODAY_DATE_COLUMN]))
+    for person in member_list:
+        all_members.setdefault(person.name, []).append((person.registration_date, person.registration_expiry))
 
     return all_members
 
@@ -84,3 +98,7 @@ def count_days(members: dict) -> dict[Any, float]:
     return days
 
 
+if __name__ == '__main__':
+
+    persons = txt_to_person("delka_clenstvi.txt")
+    make_csv_file(persons)
