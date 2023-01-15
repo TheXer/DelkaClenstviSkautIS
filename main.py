@@ -1,14 +1,13 @@
 import dataclasses
+import pathlib
 from datetime import datetime
 import csv
-from typing import Any
 
-COLUMN_UNNEEDED = 7
-TODAY_DATE_COLUMN = 4
-DATE_OF_REGISTRATION = 3
+INPUT_DIRECTORY = pathlib.Path(__file__).parent
+
 
 @dataclasses.dataclass()
-class Person:
+class User:
     name: str
     ID: str
     date_of_birth: str
@@ -18,24 +17,68 @@ class Person:
     group_type: str
 
 
-def txt_to_person(path_to_txt: str) -> list[Person]:
-    with open(path_to_txt, "r") as data:
-        clean_list_of_members = []
-        for line in data:
-            x = line.replace("\n", "")
-            list_of_lines = x.split("\t")
-            list_of_lines[TODAY_DATE_COLUMN] = list_of_lines[TODAY_DATE_COLUMN].replace(" ", "")
+class UsersList:
+    def __init__(self, txt_name: str) -> None:
+        self.COLUMN_UNNEEDED = 7
+        self.TODAY_DATE_COLUMN = 4
+        self.DATE_OF_REGISTRATION = 3
 
-            if list_of_lines[TODAY_DATE_COLUMN] == "":
-                list_of_lines[TODAY_DATE_COLUMN] = str(datetime.now().strftime("%d.%m.%Y"))
+        self.user_list = self._user_list_init(txt_name)
 
-            person = Person(*list_of_lines[:COLUMN_UNNEEDED])
-            clean_list_of_members.append(person)
+    def _user_list_init(self, txt_path: str) -> list[User]:
+        with open(INPUT_DIRECTORY / txt_path, "r") as data:
+            clean_list_of_members = []
 
-    return clean_list_of_members
+            for line in data:
+                x = line.replace("\n", "")
+                list_of_lines = x.split("\t")
+                list_of_lines[self.TODAY_DATE_COLUMN] = list_of_lines[self.TODAY_DATE_COLUMN].replace(" ", "")
+
+                if list_of_lines[self.TODAY_DATE_COLUMN] == "":
+                    list_of_lines[self.TODAY_DATE_COLUMN] = str(datetime.now().strftime("%d.%m.%Y"))
+
+                user = User(*list_of_lines[:self.COLUMN_UNNEEDED])
+                clean_list_of_members.append(user)
+
+        return clean_list_of_members
+
+    def _compute_membership_years_all(self) -> dict[User, list[tuple[str, str]]]:
+
+        all_users = {}
+        for user in self.user_list:
+            all_users.setdefault(user.name, []).append((user.registration_date, user.registration_expiry))
+
+        return all_users
+
+    def membership_years(self) -> dict[User, list[tuple[str, str]]]:
+        return {user: years
+                for user, years in self._compute_membership_years_all().items()
+                for year in years
+                if datetime.now().strftime("%d.%m.%Y") in year}
+
+    def compute_days(self, everyone: bool = False) -> dict[User, float]:
+        if everyone:
+            users = self._compute_membership_years_all()
+        else:
+            users = self.membership_years()
+        days = {}
+        for name, years in users.items():
+            for date in years:
+                date1 = datetime.strptime(date[0], "%d.%m.%Y")
+                date2 = datetime.strptime(date[1], "%d.%m.%Y")
+
+                diff = date2 - date1
+                years = round(diff.days / 365.25, 1)
+
+                if name not in days.keys():
+                    days[name] = years
+                else:
+                    days[name] += years
+
+        return days
 
 
-def make_csv_file(person_list: list[Person]) -> None:
+def make_csv_file(person_list: list[User]) -> None:
     with open("log.csv", "w") as out_file:
         writer = csv.writer(out_file, delimiter=" ")
 
@@ -50,55 +93,6 @@ def make_csv_file(person_list: list[Person]) -> None:
                 member.group_type])
 
 
-def years_actual_members(member_list: list[Person]) -> dict[str, list[tuple[str, str]]]:
-    """Get only new members"""
-
-    all_members = {}
-
-    for person in member_list:
-        all_members.setdefault(person.name, []).append((person.registration_date, person.registration_expiry))
-
-    actual_members = {
-        x: y
-        for x, y in all_members.items()
-        for date in y
-        if datetime.now().strftime("%d.%m.%Y") in date
-    }
-
-    return actual_members
-
-
-def years_all_members(member_list: list[Person]) -> dict[Person, list[tuple[str, str]]]:
-    """Get all members"""
-
-    all_members = {}
-    for person in member_list:
-        all_members.setdefault(person.name, []).append((person.registration_date, person.registration_expiry))
-
-    return all_members
-
-
-def count_days(members: dict) -> dict[Any, float]:
-    """Funkce pro výpočet členství zaokrouhlené na roky"""
-
-    days = {}
-    for name, dates in members.items():
-        for date in dates:
-            d1 = datetime.strptime(date[0], "%d.%m.%Y")
-            d2 = datetime.strptime(date[1], "%d.%m.%Y")
-
-            diff = d2 - d1
-            years = round(diff.days / 365.25, 1)
-
-            if name not in days.keys():
-                days[name] = years
-            else:
-                days[name] += years
-
-    return days
-
-
-if __name__ == '__main__':
-
-    persons = txt_to_person("delka_clenstvi.txt")
-    make_csv_file(persons)
+if __name__ == "__main__":
+    lol = UsersList("delka_clenstvi.txt")
+    print(lol.compute_days(everyone=True))
