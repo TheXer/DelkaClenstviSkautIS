@@ -18,12 +18,15 @@ class User:
 
 
 class UsersList:
-    def __init__(self, txt_name: str) -> None:
-        self.COLUMN_UNNEEDED = 7
-        self.TODAY_DATE_COLUMN = 4
-        self.DATE_OF_REGISTRATION = 3
+    COLUMN_UNNEEDED = 7
+    TODAY_DATE_COLUMN = 4
+    DATE_OF_REGISTRATION = 3
 
+    def __init__(self, txt_name: str) -> None:
         self.user_list = self._user_list_init(txt_name)
+
+    def __iter__(self):
+        return iter(self.user_list)
 
     def _user_list_init(self, txt_path: str) -> list[User]:
         with open(INPUT_DIRECTORY / txt_path, "r") as data:
@@ -68,7 +71,7 @@ class UsersList:
                 date2 = datetime.strptime(date[1], "%d.%m.%Y")
 
                 diff = date2 - date1
-                years = round(diff.days / 365.25, 1)
+                years = diff.days // 365.25
 
                 if name not in days.keys():
                     days[name] = years
@@ -78,7 +81,7 @@ class UsersList:
         return days
 
 
-def make_csv_file(person_list: list[User]) -> None:
+def make_csv_file(person_list: UsersList) -> None:
     with open("log.csv", "w") as out_file:
         writer = csv.writer(out_file, delimiter=" ")
 
@@ -93,6 +96,10 @@ def make_csv_file(person_list: list[User]) -> None:
                 member.group_type])
 
 
+def convert_csv_to_xlsx(csv_file) -> None:
+    pass
+
+
 if __name__ == "__main__":
     lol = UsersList("delka_clenstvi.txt")
-    print(lol.compute_days(everyone=True))
+    print(lol.compute_days())
